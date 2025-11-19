@@ -17,6 +17,7 @@ def main():
     else:
         # Change this to 'three_faults' or 'variable_setpoints' later
         TOPIC = "bioreactor_sim/single_fault/telemetry/summary" 
+        
         #topic =  "bioreactor/data"
     client = mqtt.Client()
     client.on_message = on_message
@@ -90,6 +91,29 @@ class BioreactorDataDetector:
             print(".", end="", flush=True)
         else:
             anomalies = []
+            for key,values in data.items():
+                if key in self.data:
+                    mean = self.data[key]["mean"]
+                    std = self.data[key]["std"]
+                    z_score = (values['mean'] - mean) / std
+                    if abs(z_score) > z_Threshold:
+                        anomalies.append(key)
+            anomaly_detected = len(anomalies) > 0
+            actual_faults = len(data['faults']['last_active'])>0
+            if anomaly_detected and actual_faults:
+                self.tp += 1
+                result = "True Positive"
+            elif not anomaly_detected and not actual_faults:
+                self.tn += 1
+                result = "True Negative"
+            elif anomaly_detected and not actual_faults:
+                self.fp += 1
+                result = "False Positive"
+            else:
+                self.fn += 1
+                result = "False Negative"
+            print(f"faults = {data['faults']}")
+            print(f"Anomalies detected: {anomalies} | Actual faults: {data['faults']['last_active']} | Result: {result}")
             
             
     
